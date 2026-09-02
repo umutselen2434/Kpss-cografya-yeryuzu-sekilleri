@@ -3,7 +3,7 @@
 <head>
   <meta charset="UTF-8" />
   <meta name="viewport" content="width=device-width, initial-scale=1.0" />
-  <title>KPSS Coğrafya Soru Fabrikası</title>
+  <title>KPSS Coğrafya Soru Platformu</title>
   <script src="https://cdn.tailwindcss.com"></script>
   <script src="https://unpkg.com/lucide@latest"></script>
   <style>
@@ -18,22 +18,553 @@
 </head>
 <body class="bg-slate-900 text-slate-100 min-h-screen flex flex-col font-sans">
 
-  <!-- Üst Menü -->
+  <!-- Üst Menü / Navbar -->
   <header class="bg-slate-800 border-b border-slate-700 sticky top-0 z-50">
     <div class="max-w-5xl mx-auto px-4 py-3 flex flex-wrap items-center justify-between gap-3">
       <div class="flex items-center gap-2">
-        <i data-lucide="map" class="text-rose-500 w-6 h-6"></i>
-        <h1 class="text-lg md:text-xl font-bold tracking-tight text-white">KPSS Coğrafya Soru Motoru</h1>
+        <i data-lucide="compass" class="text-rose-500 w-6 h-6"></i>
+        <h1 class="text-lg md:text-xl font-bold tracking-tight text-white">KPSS Coğrafya</h1>
       </div>
       
+      <!-- Navigasyon Butonları -->
       <nav class="flex items-center gap-2 overflow-x-auto py-1">
         <button onclick="switchTab('quiz')" id="tab-quiz" class="px-3 py-1.5 rounded-lg text-sm font-medium bg-rose-600 text-white flex items-center gap-1.5 transition">
           <i data-lucide="play-circle" class="w-4 h-4"></i> Soru Çöz
         </button>
-        <button onclick="switchTab('favorites')" id="tab-favorites" class="px-3 py-1.5 rounded-lg text-sm font-medium bg-slate-700 hover:bg-slate-600 text-slate-200 flex items-center gap-1.5 transition">
-          <i data-lucide="heart" class="w-4 h-4 text-pink-400"></i> Beğenilenler (<span id="fav-count">0</span>)
+        <button onclick="toggleFavoriteCurrent()" id="tab-favorites" class="px-3 py-1.5 rounded-lg text-sm font-medium bg-slate-700 hover:bg-slate-600 text-slate-200 flex items-center gap-1.5 transition" title="Mevcut soruyu beğen / Beğenilenleri aç">
+          <i data-lucide="heart" id="header-fav-icon" class="w-4 h-4 text-pink-400"></i> Beğenilenler (<span id="fav-count">0</span>)
         </button>
         <button onclick="switchTab('wrongs')" id="tab-wrongs" class="px-3 py-1.5 rounded-lg text-sm font-medium bg-slate-700 hover:bg-slate-600 text-slate-200 flex items-center gap-1.5 transition">
+          <i data-lucide="x-circle" class="w-4 h-4 text-rose-400"></i> Yanlışlar (<span id="wrong-count">0</span>)
+        </button>
+        <button onclick="switchTab('corrects')" id="tab-corrects" class="px-3 py-1.5 rounded-lg text-sm font-medium bg-slate-700 hover:bg-slate-600 text-slate-200 flex items-center gap-1.5 transition">
+          <i data-lucide="check-circle-2" class="w-4 h-4 text-emerald-400"></i> Doğrular (<span id="correct-count">0</span>)
+        </button>
+      </nav>
+    </div>
+  </header>
+
+  <!-- Ana İçerik -->
+  <main class="max-w-4xl w-full mx-auto p-4 flex-1 flex flex-col justify-center">
+
+    <!-- 1. Soru Çözme Görünümü -->
+    <div id="view-quiz" class="space-y-4">
+      <div class="flex justify-between items-center bg-slate-800/80 px-4 py-2.5 rounded-xl border border-slate-700 text-xs md:text-sm text-slate-300">
+        <span id="question-category" class="font-semibold text-rose-400 font-mono"></span>
+        <span>Toplam Çözülen: <strong id="total-solved" class="text-white">0</strong></span>
+      </div>
+
+      <!-- Soru Kartı -->
+      <div class="bg-slate-800 rounded-2xl border border-slate-700 p-5 md:p-7 shadow-xl space-y-6">
+        
+        <!-- Harita Alanı -->
+        <div id="map-container" class="hidden w-full bg-slate-950/80 rounded-xl p-3 border border-slate-700/60 flex flex-col items-center">
+          <div class="w-full max-w-lg aspect-[16/9] relative flex items-center justify-center">
+            <svg viewBox="0 0 800 400" class="w-full h-full drop-shadow-md">
+              <path d="M 50 150 Q 150 100 250 120 T 450 110 T 650 120 Q 750 140 760 210 Q 730 280 650 270 T 450 290 T 250 310 Q 100 300 60 230 Z" fill="#1e293b" stroke="#475569" stroke-width="3"/>
+              <g id="svg-features"></g>
+            </svg>
+          </div>
+          <span id="map-legend" class="text-xs text-rose-400 mt-2 font-mono font-medium"></span>
+        </div>
+
+        <!-- Soru Metni -->
+        <div>
+          <h2 id="question-text" class="text-base md:text-lg font-medium text-slate-100 leading-relaxed"></h2>
+        </div>
+
+        <!-- Seçenekler -->
+        <div id="options-container" class="grid grid-cols-1 gap-3"></div>
+
+        <!-- Açıklama -->
+        <div id="explanation-box" class="hidden p-4 rounded-xl border text-sm leading-relaxed"></div>
+
+        <!-- Sıradaki Butonu -->
+        <div class="flex justify-end pt-2">
+          <button id="btn-next" onclick="nextQuestion()" class="hidden px-6 py-2.5 bg-rose-600 hover:bg-rose-500 text-white font-semibold rounded-xl transition flex items-center gap-2">
+            Sonraki Soru <i data-lucide="arrow-right" class="w-4 h-4"></i>
+          </button>
+        </div>
+      </div>
+    </div>
+
+    <!-- 2. Liste Görünümü (Beğenilenler, Yanlışlar, Doğrular) -->
+    <div id="view-list" class="hidden space-y-4">
+      <div class="flex items-center justify-between">
+        <h2 id="list-title" class="text-lg font-bold text-white flex items-center gap-2"></h2>
+        <button onclick="switchTab('quiz')" class="text-xs bg-slate-700 hover:bg-slate-600 px-3 py-1.5 rounded-lg text-slate-200">
+          Soru Çözmeye Dön
+        </button>
+      </div>
+      <div id="list-container" class="space-y-3"></div>
+    </div>
+
+  </main>
+
+  <script>
+    const geographyData = {
+      mountains: {
+        volcanic: ["Nemrut", "Süphan", "Tendürek", "Ağrı Dağı", "Erciyes", "Hasan Dağı", "Melendiz", "Karadağ", "Karacadağ", "Kula Volkanları"],
+        orogenic_horst: ["Kaz Dağları", "Madra Dağı", "Yunt Dağı", "Bozdağlar", "Aydın Dağları", "Menteşe Dağları", "Amanos (Nur) Dağları"],
+        orogenic_fold: ["Toros Dağları", "Kaçkar Dağları", "Küre Dağları", "Ilgaz Dağları", "Bolu Dağları", "Yıldız Dağları", "Canik Dağları", "Geyik Dağları"]
+      },
+      plateaus: {
+        volcanic: ["Erzurum-Kars Platosu", "Ardahan Platosu", "Kapadokya Platosu"],
+        karstic_kalker: ["Teke Platosu", "Taşeli Platosu"],
+        tabaka: ["Haymana Platosu", "Cihanbeyli Platosu", "Bozok Platosu", "Obruk Platosu", "Uzunyayla Platosu", "Gaziantep Platosu", "Şanlıurfa Platosu"],
+        erosion: ["Çatalca-Kocaeli Platosu", "Perşembe Yaylası"]
+      },
+      lakes: {
+        karstic: ["Salda Gölü", "Avlan Gölü", "Kestel Gölü", "Elmalı Gölü", "Suğla Gölü", "Kızılören Gölü"],
+        volcanic: ["Meke Maar Gölü", "Nemrut Krater Gölü", "Gölcük (Isparta)"],
+        tectonic: ["Tuz Gölü", "Beyşehir Gölü", "Eğirdir Gölü", "İznik Gölü", "Manyas Gölü", "Sapanca Gölü", "Hazar Gölü", "Akşehir Gölü", "Burdur Gölü"],
+        set_landslide: ["Tortum Gölü", "Abant Gölü", "Yedigöller", "Sera Gölü", "Zinav Gölü", "Borabay Gölü"],
+        set_alluvial: ["Köyceğiz Gölü", "Bafa (Çamiçi) Gölü", "Mogan Gölü", "Eymir Gölü", "Marmara Gölü"],
+        set_volcanic: ["Van Gölü", "Erçek Gölü", "Nazik Gölü", "Balık Gölü", "Çıldır Gölü", "Haçlı Gölü"],
+        set_coastal: ["Büyükçekmece Gölü", "Küçükçekmece Gölü", "Terkos (Durusu) Gölü"]
+      },
+      plains: {
+        delta: ["Çukurova (Seyhan-Ceyhan)", "Bafra (Kızılırmak)", "Çarşamba (Yeşilırmak)", "Silifke (Göksu)", "Menemen (Gediz)", "Balat (B.Menderes)", "Dikili (Bakırçay)"],
+        karstic: ["Tefenni Ovası", "Acıpayam Ovası", "Korkuteli Ovası", "Muğla Ovası", "Elmalı Ovası", "Kestel Ovası"],
+        tectonic: ["Ergene Ovası", "Amik Ovası", "Konya Ovası", "Düzce Ovası", "Niksar Ovası", "Erzincan Ovası", "Muş Ovası"]
+      },
+      geologicTimes: [
+        { time: "Birinci Jeolojik Zaman (Paleozoyik)", events: ["Zonguldak-Amasra taş kömürü yataklarının oluşumu", "Masif (yaşlı ve sert) arazilerin meydana gelmesi", "Kaledoniyen ve Herseniyen kıvrımlarının oluşması"] },
+        { time: "Üçüncü Jeolojik Zaman (Tersiyer / Senozoyik)", events: ["Soma, Yatağan ve Elbistan linyit yataklarının oluşumu", "Kırka ve Seyitgazi bor yataklarının oluşumu", "Petrol ve kaya tuzu yataklarının oluşumu", "Toroslar ve Kuzey Anadolu Dağları'nın (Alp Orojenezi) kıvrılması"] },
+        { time: "Dördüncü Jeolojik Zaman (Kuvaterner)", events: ["Egeid karasının çökmesi ve Ege Denizi'nin oluşumu", "İstanbul ve Çanakkale boğazlarının oluşumu", "Karadeniz'in göl halinden deniz haline gelmesi", "Buzul çağları ve insan topluluklarının ortaya çıkışı"] }
+      ],
+      mapScenarios: [
+        {
+          category: "Kıyı Tipleri / Harita",
+          points: [{ x: 190, y: 130, label: "I (Ria - Boğaz)" }, { x: 190, y: 160, label: "II (Limanlı)" }, { x: 140, y: 230, label: "III (Enine Kıyı)" }, { x: 260, y: 310, label: "IV (Kaş - Dalmaçya)" }, { x: 620, y: 270, label: "V (Boyuna Kıyı)" }],
+          text: "Yukarıdaki Türkiye haritasında numaralandırılan kıyı alanlarından hangisinde <b>Dalmaçya Tipi Kıyılar</b> görülmektedir?",
+          options: ["I", "II", "III", "IV", "V"],
+          correct: 3,
+          explanation: "Dalmaçya kıyı tipi Antalya <b>Kaş - Finike kıyılarında (IV)</b> görülür."
+        },
+        {
+          category: "Buzul Şekilleri / Harita",
+          points: [{ x: 160, y: 110, label: "I (Ergene)" }, { x: 150, y: 200, label: "II (Ege)" }, { x: 440, y: 220, label: "III (Tuz G.)" }, { x: 490, y: 290, label: "IV (Bolkar-Aladağlar)" }, { x: 740, y: 290, label: "V (Hakkâri Cilo)" }],
+          text: "Türkiye'nin bazı yüksek dağlarında buzul aşındırma ve biriktirme şekillerine rastlanır.\n\nHaritada numaralandırılan alanların hangilerinde buzul şekilleri <b>daha fazla</b> görülür?",
+          options: ["I ve II", "I ve III", "II ve IV", "III ve V", "IV ve V"],
+          correct: 4,
+          explanation: "Buzul şekilleri Bolkar-Aladağlar kuşağı (IV) ve Hakkâri Cilo Dağları'nda (V) yaygındır."
+        },
+        {
+          category: "Volkanizma / Harita",
+          points: [{ x: 230, y: 190, label: "Kula" }, { x: 420, y: 220, label: "Karadağ" }, { x: 470, y: 200, label: "Erciyes-Hasan" }, { x: 670, y: 190, label: "Ağrı-Tendürek" }],
+          text: "Türkiye haritasında kırmızı işaretlerle gösterilen alanların ortak jeolojik özelliği aşağıdakilerden hangisidir?",
+          options: ["Genç volkanik sahalar olmaları", "Karstik aşınım şekillerinin yaygın olması", "Buzul göllerinin bulunması", "Taş kömürü yataklarının bulunması", "Delta ovaları olmaları"],
+          correct: 0,
+          explanation: "Kula, İç Anadolu volkanları ve Doğu Anadolu volkanları genç volkanik arazilerdir."
+        }
+      ]
+    };
+
+    function generateQuestion(id) {
+      const modes = ['map', 'jips_karst', 'human_impact', 'land_use', 'orogeny_vs_volcano', 'lava_plateau', 'geology', 'plain_delta', 'lake_shallow', 'lake_type'];
+      const chosen = modes[Math.floor(Math.random() * modes.length)];
+
+      if (chosen === 'map') {
+        const sc = geographyData.mapScenarios[Math.floor(Math.random() * geographyData.mapScenarios.length)];
+        return {
+          id: id,
+          category: sc.category,
+          type: "map",
+          mapData: { points: sc.points, color: "#ef4444", legend: "Haritada kırmızı ile işaretlenmiş alanlar" },
+          text: sc.text,
+          options: sc.options,
+          correct: sc.correct,
+          explanation: sc.explanation
+        };
+      }
+
+      if (chosen === 'jips_karst') {
+        const options = ["Sivas", "Diyarbakır", "Yozgat", "Giresun", "Kastamonu"].sort(() => Math.random() - 0.5);
+        return {
+          id: id,
+          category: "Kayaç Tipleri & Karstik Şekiller",
+          type: "text",
+          text: "Aşağıdaki illerin hangisinde <b>jips (alçı taşı) karstına</b> ait yer şekilleri daha yaygındır?",
+          options: options,
+          correct: options.indexOf("Sivas"),
+          explanation: "Türkiye'de jips karstı en tipik olarak <b>Sivas, Çankırı ve Erzincan</b> çevrelerinde görülür."
+        };
+      }
+
+      if (chosen === 'human_impact') {
+        return {
+          id: id,
+          category: "Çevre & İnsan Etkisi",
+          type: "text",
+          text: "I. Bazı doğal göllerin kuruması\nII. Peribacası oluşumu\nIII. Çökme obruklarının sayısının hızla artması\n\nYukarıdakilerden hangileri <b>aşırı yeraltı suyu kullanımı ve insan baskısı</b> sonucu ortaya çıkmıştır?",
+          options: ["Yalnız I", "Yalnız II", "I ve III", "II ve III", "I, II ve III"],
+          correct: 2,
+          explanation: "Göllerin kuruması (I) ve obrukların artması (III) insan baskısıdır. Peribacaları (II) ise doğal aşınım sürecidir."
+        };
+      }
+
+      if (chosen === 'land_use') {
+        const options = [
+          "Çukurova ve Gediz gibi birinci sınıf tarım alanlarının sanayi ve konuta açılması",
+          "İç Anadolu'daki meraların sürülerek tarım alanına dönüştürülmesi",
+          "Doğu Karadeniz'deki dik yamaçlarda orman örtüsünün tahrip edilmesi",
+          "Delta ovaları üzerine tatil tesislerinin inşa edilmesi",
+          "Batı Anadolu'daki jeotermal kaynakların konut ısıtmasında ve seracılıkta kullanılması"
+        ];
+        return {
+          id: id,
+          category: "Arazi Kullanımı & Ekoloji",
+          type: "text",
+          text: "Aşağıdakilerden hangisi Türkiye'de <b>'yanlış arazi kullanımı'na örnek <u>gösterilemez</u></b> (Doğru kullanımdır)?",
+          options: options,
+          correct: 4,
+          explanation: "Jeotermal enerjinin seracılık ve konut ısıtmasında kullanılması doğru ve sürdürülebilir bir uygulamadır."
+        };
+      }
+
+      if (chosen === 'orogeny_vs_volcano') {
+        return {
+          id: id,
+          category: "Dağ Oluşumları (Orojenez)",
+          type: "text",
+          text: "I. Amanos Dağları\nII. Erciyes Dağı\nIII. Kaçkar Dağları\n\nYukarıdakilerden hangileri <b>Orojenik (Dağ Oluşumu)</b> hareketler sonucunda meydana gelmiştir?",
+          options: ["I ve II", "I ve III", "II ve III", "Yalnız I", "I, II ve III"],
+          correct: 1,
+          explanation: "Amanos (horst) ve Kaçkar (kıvrım) dağları orojenez kökenlidir. Erciyes ise volkaniktir."
+        };
+      }
+
+      if (chosen === 'lava_plateau') {
+        const isKap = Math.random() > 0.5;
+        if (isKap) {
+          const options = ["Kapadokya Platosu", "Perşembe Yaylası", "Taşeli Platosu", "Gaziantep Platosu", "Uzunyayla Platosu"].sort(() => Math.random() - 0.5);
+          return {
+            id: id,
+            category: "Platolar ve Oluşum Türleri",
+            type: "text",
+            text: "Aşağıdaki platoların hangisinde <b>volkanik tüf ve aşınım şekilleri</b> daha yoğun görülür?",
+            options: options,
+            correct: options.indexOf("Kapadokya Platosu"),
+            explanation: "<b>Kapadokya Platosu</b> volkanik tüflerin aşınmasıyla oluşan volkanik kökenli bir platodur."
+          };
+        } else {
+          const options = ["Erzurum-Kars Platosu", "Çatalca-Kocaeli Platosu", "Haymana Platosu", "Cihanbeyli Platosu", "Taşeli Platosu"].sort(() => Math.random() - 0.5);
+          return {
+            id: id,
+            category: "Platolar ve Oluşum Türleri",
+            type: "text",
+            text: "Lavların akarsular tarafından yarılmasıyla oluşan <b>Lav Platosu</b> aşağıdakilerden hangisidir?",
+            options: options,
+            correct: options.indexOf("Erzurum-Kars Platosu"),
+            explanation: "<b>Erzurum-Kars ve Ardahan Platoları</b> tipik lav örtüsü platolarıdır."
+          };
+        }
+      }
+
+      if (chosen === 'geology') {
+        const randTimeObj = geographyData.geologicTimes[Math.floor(Math.random() * geographyData.geologicTimes.length)];
+        const randEvent = randTimeObj.events[Math.floor(Math.random() * randTimeObj.events.length)];
+        const options = ["Paleozoyik (I. Zaman)", "Mezozoyik (II. Zaman)", "Tersiyer (III. Zaman)", "Kuvaterner (IV. Zaman)", "Prekambriyen (İlkel Zaman)"].sort(() => Math.random() - 0.5);
+        let targetLabel = randTimeObj.time.includes("Birinci") ? "Paleozoyik (I. Zaman)" : (randTimeObj.time.includes("Üçüncü") ? "Tersiyer (III. Zaman)" : "Kuvaterner (IV. Zaman)");
+        return {
+          id: id,
+          category: "Jeolojik Zamanlar",
+          type: "text",
+          text: `Türkiye'de <b>"${randEvent}"</b> olayı hangi jeolojik dönemde gerçekleşmiştir?`,
+          options: options,
+          correct: options.indexOf(targetLabel),
+          explanation: `Bu oluşum <b>${randTimeObj.time}</b> dönemine aittir.`
+        };
+      }
+
+      if (chosen === 'plain_delta') {
+        const correctDelta = geographyData.plains.delta[Math.floor(Math.random() * geographyData.plains.delta.length)];
+        const nonDeltas = [...geographyData.plains.karstic, ...geographyData.plains.tectonic].sort(() => Math.random() - 0.5).slice(0, 4);
+        const options = [...nonDeltas, correctDelta].sort(() => Math.random() - 0.5);
+        return {
+          id: id,
+          category: "Ovalar",
+          type: "text",
+          text: "Akarsuların taşıdığı alüvyonları denize döküldüğü yerde biriktirmesiyle oluşan <b>Delta Ovası</b> hangisidir?",
+          options: options,
+          correct: options.indexOf(correctDelta),
+          explanation: `<b>${correctDelta}</b> bir delta ovasıdır.`
+        };
+      }
+
+      if (chosen === 'lake_shallow') {
+        const options = ["Seyfe Gölü (Kırşehir)", "Abant Gölü (Bolu)", "Tortum Gölü (Erzurum)", "Büyükçekmece (İstanbul)", "Eğirdir Gölü (Isparta)"];
+        return {
+          id: id,
+          category: "Göller & Ekoloji",
+          type: "text",
+          text: "Kapalı havzalarda yer alan, yağışlı dönemde genişleyip kurak dönemde alanı çok daralan sığ göl hangisidir?",
+          options: options,
+          correct: 0,
+          explanation: "<b>Seyfe Gölü</b> ve Tuz Gölü kapalı havzada yer alan sığ göllerdir."
+        };
+      }
+
+      // Varsayılan Göl Sorusu
+      const types = [
+        { key: 'set_landslide', name: 'Heyelan Seti' },
+        { key: 'set_coastal', name: 'Kıyı Set (Lagün)' },
+        { key: 'karstic', name: 'Karstik' },
+        { key: 'set_volcanic', name: 'Lav Seti' }
+      ];
+      const targetType = types[Math.floor(Math.random() * types.length)];
+      const correctLake = geographyData.lakes[targetType.key][Math.floor(Math.random() * geographyData.lakes[targetType.key].length)];
+      const otherTypes = types.filter(t => t.key !== targetType.key);
+      let wrongLakes = [];
+      while (wrongLakes.length < 4) {
+        const randT = otherTypes[Math.floor(Math.random() * otherTypes.length)];
+        const candidate = geographyData.lakes[randT.key][Math.floor(Math.random() * geographyData.lakes[randT.key].length)];
+        if (!wrongLakes.includes(candidate)) wrongLakes.push(candidate);
+      }
+      const lOptions = [...wrongLakes, correctLake].sort(() => Math.random() - 0.5);
+      return {
+        id: id,
+        category: "Göl Oluşumları",
+        type: "text",
+        text: `Aşağıdaki göllerden hangisi <b>${targetType.name}</b> gölüne örnektir?`,
+        options: lOptions,
+        correct: lOptions.indexOf(correctLake),
+        explanation: `<b>${correctLake}</b> bir <b>${targetType.name}</b> gölüdür.`
+      };
+    }
+
+    // --- STATE YÖNETİMİ ---
+    let questionBank = JSON.parse(localStorage.getItem('kpss_qbank_v6') || '[]');
+    let currentIdx = parseInt(localStorage.getItem('kpss_cur_idx_v6') || '0', 10);
+    let favorites = JSON.parse(localStorage.getItem('kpss_favs_v6') || '[]');
+    let wrongs = JSON.parse(localStorage.getItem('kpss_wrongs_v6') || '[]');
+    let corrects = JSON.parse(localStorage.getItem('kpss_corrects_v6') || '[]');
+    let solvedCount = parseInt(localStorage.getItem('kpss_solved_v6') || '0', 10);
+
+    if (questionBank.length === 0) {
+      for (let i = 1; i <= 30; i++) {
+        questionBank.push(generateQuestion(i));
+      }
+      localStorage.setItem('kpss_qbank_v6', JSON.stringify(questionBank));
+    }
+
+    function saveState() {
+      localStorage.setItem('kpss_favs_v6', JSON.stringify(favorites));
+      localStorage.setItem('kpss_wrongs_v6', JSON.stringify(wrongs));
+      localStorage.setItem('kpss_corrects_v6', JSON.stringify(corrects));
+      localStorage.setItem('kpss_cur_idx_v6', currentIdx.toString());
+      localStorage.setItem('kpss_qbank_v6', JSON.stringify(questionBank));
+      localStorage.setItem('kpss_solved_v6', solvedCount.toString());
+      updateCounters();
+    }
+
+    function updateCounters() {
+      document.getElementById('fav-count').textContent = favorites.length;
+      document.getElementById('wrong-count').textContent = wrongs.length;
+      document.getElementById('correct-count').textContent = corrects.length;
+      document.getElementById('total-solved').textContent = solvedCount;
+
+      // Üst bardaki favori butonunun görsel durumunu güncelle
+      const currentQ = questionBank[currentIdx];
+      const favIcon = document.getElementById('header-fav-icon');
+      if (currentQ && favorites.includes(currentQ.id)) {
+        favIcon.setAttribute('fill', 'currentColor');
+      } else {
+        favIcon.removeAttribute('fill');
+      }
+    }
+
+    function renderQuestion(index) {
+      if (index >= questionBank.length) {
+        questionBank.push(generateQuestion(questionBank.length + 1));
+      }
+
+      currentIdx = index;
+      saveState();
+
+      const q = questionBank[index];
+      document.getElementById('question-category').textContent = q.category;
+      document.getElementById('question-text').innerHTML = q.text.replace(/\n/g, '<br>');
+
+      // Harita Alanı
+      const mapContainer = document.getElementById('map-container');
+      const svgFeatures = document.getElementById('svg-features');
+      svgFeatures.innerHTML = '';
+
+      if (q.type === 'map' && q.mapData) {
+        mapContainer.classList.remove('hidden');
+        document.getElementById('map-legend').textContent = q.mapData.legend || '';
+        
+        q.mapData.points.forEach(pt => {
+          const circleG = document.createElementNS("http://www.w3.org/2000/svg", "g");
+          circleG.innerHTML = `
+            <circle cx="${pt.x}" cy="${pt.y}" r="15" fill="${q.mapData.color}" opacity="0.35" class="map-pulse" />
+            <circle cx="${pt.x}" cy="${pt.y}" r="8" fill="${q.mapData.color}" stroke="#ffffff" stroke-width="2" />
+            <text x="${pt.x}" y="${pt.y - 12}" fill="#ffffff" font-size="12" font-weight="bold" text-anchor="middle">${pt.label}</text>
+          `;
+          svgFeatures.appendChild(circleG);
+        });
+      } else {
+        mapContainer.classList.add('hidden');
+      }
+
+      // Seçenekler
+      const optionsContainer = document.getElementById('options-container');
+      optionsContainer.innerHTML = '';
+      const letters = ['A', 'B', 'C', 'D', 'E'];
+
+      q.options.forEach((opt, idx) => {
+        const btn = document.createElement('button');
+        btn.className = "w-full text-left p-3.5 rounded-xl bg-slate-700/60 hover:bg-slate-700 border border-slate-600/60 transition flex items-start gap-3 text-sm md:text-base group";
+        btn.id = `opt-${idx}`;
+        btn.innerHTML = `
+          <span class="w-6 h-6 rounded-lg bg-slate-800 border border-slate-600 flex items-center justify-center text-xs font-bold text-slate-300 group-hover:border-rose-400 shrink-0">
+            ${letters[idx]}
+          </span>
+          <span class="flex-1">${opt}</span>
+        `;
+        btn.onclick = () => selectAnswer(idx);
+        optionsContainer.appendChild(btn);
+      });
+
+      document.getElementById('explanation-box').className = "hidden";
+      document.getElementById('btn-next').classList.add('hidden');
+    }
+
+    function selectAnswer(selectedIdx) {
+      const q = questionBank[currentIdx];
+      const isCorrect = selectedIdx === q.correct;
+      solvedCount++;
+
+      if (isCorrect) {
+        if (!corrects.includes(q.id)) corrects.push(q.id);
+        wrongs = wrongs.filter(id => id !== q.id);
+      } else {
+        if (!wrongs.includes(q.id)) wrongs.push(q.id);
+        corrects = corrects.filter(id => id !== q.id);
+      }
+      saveState();
+
+      q.options.forEach((_, idx) => {
+        const btn = document.getElementById(`opt-${idx}`);
+        btn.disabled = true;
+        if (idx === q.correct) {
+          btn.className = "w-full text-left p-3.5 rounded-xl bg-emerald-950/80 border-2 border-emerald-500 text-emerald-100 flex items-start gap-3 text-sm md:text-base";
+        } else if (idx === selectedIdx && !isCorrect) {
+          btn.className = "w-full text-left p-3.5 rounded-xl bg-rose-950/80 border-2 border-rose-500 text-rose-100 flex items-start gap-3 text-sm md:text-base";
+        } else {
+          btn.className = "w-full text-left p-3.5 rounded-xl bg-slate-800/40 border border-slate-700/50 text-slate-500 opacity-60 flex items-start gap-3 text-sm md:text-base";
+        }
+      });
+
+      const expBox = document.getElementById('explanation-box');
+      expBox.className = `p-4 rounded-xl border text-sm leading-relaxed ${isCorrect ? 'bg-emerald-900/30 border-emerald-700 text-emerald-200' : 'bg-rose-900/30 border-rose-700 text-rose-200'}`;
+      expBox.innerHTML = `
+        <div class="font-bold flex items-center gap-1.5 mb-1">
+          <i data-lucide="${isCorrect ? 'check-circle' : 'alert-triangle'}" class="w-4 h-4"></i>
+          ${isCorrect ? 'Tebrikler, Doğru Cevap!' : 'Yanlış Cevap!'}
+        </div>
+        <div>${q.explanation}</div>
+      `;
+      expBox.classList.remove('hidden');
+
+      document.getElementById('btn-next').classList.remove('hidden');
+      lucide.createIcons();
+    }
+
+    function nextQuestion() {
+      renderQuestion(currentIdx + 1);
+    }
+
+    // Doğrudan üst bardaki Beğenilenler butonuna tıklandığında çalışır
+    function toggleFavoriteCurrent() {
+      const q = questionBank[currentIdx];
+      if (!q) return;
+
+      if (favorites.includes(q.id)) {
+        favorites = favorites.filter(id => id !== q.id);
+      } else {
+        favorites.push(q.id);
+      }
+      saveState();
+      lucide.createIcons();
+    }
+
+    function switchTab(tab) {
+      const tabs = ['quiz', 'favorites', 'wrongs', 'corrects'];
+      tabs.forEach(t => {
+        const btn = document.getElementById(`tab-${t}`);
+        if (t === tab && tab !== 'favorites') {
+          btn.className = "px-3 py-1.5 rounded-lg text-sm font-medium bg-rose-600 text-white flex items-center gap-1.5 transition";
+        } else {
+          btn.className = "px-3 py-1.5 rounded-lg text-sm font-medium bg-slate-700 hover:bg-slate-600 text-slate-200 flex items-center gap-1.5 transition";
+        }
+      });
+
+      const viewQuiz = document.getElementById('view-quiz');
+      const viewList = document.getElementById('view-list');
+
+      if (tab === 'quiz') {
+        viewQuiz.classList.remove('hidden');
+        viewList.classList.add('hidden');
+      } else {
+        viewQuiz.classList.add('hidden');
+        viewList.classList.remove('hidden');
+        renderFilteredList(tab);
+      }
+    }
+
+    function renderFilteredList(type) {
+      const listContainer = document.getElementById('list-container');
+      const listTitle = document.getElementById('list-title');
+      listContainer.innerHTML = '';
+
+      let targetIds = type === 'favorites' ? favorites : (type === 'wrongs' ? wrongs : corrects);
+      let titleText = type === 'favorites' ? 'Beğenilen Sorular' : (type === 'wrongs' ? 'Yanlış Yapılan Sorular' : 'Doğru Yapılan Sorular');
+      
+      listTitle.innerHTML = `${titleText} (${targetIds.length})`;
+
+      if (targetIds.length === 0) {
+        listContainer.innerHTML = `<div class="p-8 text-center bg-slate-800 rounded-xl border border-slate-700 text-slate-400">Henüz bu listede soru bulunmuyor.</div>`;
+        return;
+      }
+
+      targetIds.forEach(id => {
+        const qIndex = questionBank.findIndex(item => item.id === id);
+        const q = questionBank[qIndex];
+        if (!q) return;
+
+        const card = document.createElement('div');
+        card.className = "bg-slate-800 p-4 rounded-xl border border-slate-700 space-y-2 hover:border-slate-500 transition";
+        card.innerHTML = `
+          <div class="flex justify-between items-start gap-2">
+            <span class="text-xs bg-slate-700 text-rose-300 px-2 py-0.5 rounded font-mono">${q.category}</span>
+            <button onclick="goToQuestion(${qIndex})" class="text-xs bg-rose-600 hover:bg-rose-500 text-white px-2.5 py-1 rounded-lg">
+              Bu Soruyu Çöz
+            </button>
+          </div>
+          <p class="text-sm font-medium text-slate-200 line-clamp-2">${q.text.replace(/<[^>]*>?/gm, '')}</p>
+        `;
+        listContainer.appendChild(card);
+      });
+
+      lucide.createIcons();
+    }
+
+    function goToQuestion(index) {
+      switchTab('quiz');
+      renderQuestion(index);
+    }
+
+    window.onload = () => {
+      updateCounters();
+      renderQuestion(currentIdx);
+      lucide.createIcons();
+    };
+  </script>
+</body>
+</html>
           <i data-lucide="x-circle" class="w-4 h-4 text-rose-400"></i> Yanlışlar (<span id="wrong-count">0</span>)
         </button>
         <button onclick="switchTab('corrects')" id="tab-corrects" class="px-3 py-1.5 rounded-lg text-sm font-medium bg-slate-700 hover:bg-slate-600 text-slate-200 flex items-center gap-1.5 transition">
