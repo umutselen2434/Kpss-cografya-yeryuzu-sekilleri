@@ -3,10 +3,8 @@
 <head>
   <meta charset="UTF-8" />
   <meta name="viewport" content="width=device-width, initial-scale=1.0" />
-  <title>KPSS Coğrafya Soru Platformu</title>
-  <!-- Tailwind CSS CDN -->
+  <title>KPSS Coğrafya Soru Fabrikası</title>
   <script src="https://cdn.tailwindcss.com"></script>
-  <!-- Lucide Icons -->
   <script src="https://unpkg.com/lucide@latest"></script>
   <style>
     .map-pulse {
@@ -14,26 +12,409 @@
     }
     @keyframes pulse-ring {
       0%, 100% { opacity: 0.9; transform: scale(1); }
-      50% { opacity: 0.4; transform: scale(1.08); }
+      50% { opacity: 0.4; transform: scale(1.1); }
     }
   </style>
 </head>
 <body class="bg-slate-900 text-slate-100 min-h-screen flex flex-col font-sans">
 
-  <!-- Üst Menü / Navbar -->
   <header class="bg-slate-800 border-b border-slate-700 sticky top-0 z-50">
     <div class="max-w-5xl mx-auto px-4 py-3 flex flex-wrap items-center justify-between gap-3">
       <div class="flex items-center gap-2">
-        <i data-lucide="map-pin" class="text-rose-500 w-6 h-6"></i>
-        <h1 class="text-lg md:text-xl font-bold tracking-tight text-white">KPSS Coğrafya Soru Fabrikası</h1>
+        <i data-lucide="compass" class="text-rose-500 w-6 h-6"></i>
+        <h1 class="text-lg md:text-xl font-bold tracking-tight text-white">KPSS Coğrafya Soru Motoru</h1>
       </div>
       
-      <!-- Navigasyon Butonları -->
       <nav class="flex items-center gap-2 overflow-x-auto py-1">
         <button onclick="switchTab('quiz')" id="tab-quiz" class="px-3 py-1.5 rounded-lg text-sm font-medium bg-rose-600 text-white flex items-center gap-1.5 transition">
           <i data-lucide="play-circle" class="w-4 h-4"></i> Soru Çöz
         </button>
         <button onclick="switchTab('favorites')" id="tab-favorites" class="px-3 py-1.5 rounded-lg text-sm font-medium bg-slate-700 hover:bg-slate-600 text-slate-200 flex items-center gap-1.5 transition">
+          <i data-lucide="heart" class="w-4 h-4 text-pink-400"></i> Beğenilenler (<span id="fav-count">0</span>)
+        </button>
+        <button onclick="switchTab('wrongs')" id="tab-wrongs" class="px-3 py-1.5 rounded-lg text-sm font-medium bg-slate-700 hover:bg-slate-600 text-slate-200 flex items-center gap-1.5 transition">
+          <i data-lucide="x-circle" class="w-4 h-4 text-rose-400"></i> Yanlışlar (<span id="wrong-count">0</span>)
+        </button>
+        <button onclick="switchTab('corrects')" id="tab-corrects" class="px-3 py-1.5 rounded-lg text-sm font-medium bg-slate-700 hover:bg-slate-600 text-slate-200 flex items-center gap-1.5 transition">
+          <i data-lucide="check-circle-2" class="w-4 h-4 text-emerald-400"></i> Doğrular (<span id="correct-count">0</span>)
+        </button>
+      </nav>
+    </div>
+  </header>
+
+  <main class="max-w-4xl w-full mx-auto p-4 flex-1 flex flex-col justify-center">
+
+    <div id="view-quiz" class="space-y-4">
+      <div class="flex justify-between items-center bg-slate-800/80 px-4 py-2.5 rounded-xl border border-slate-700 text-xs md:text-sm text-slate-300">
+        <span id="question-category" class="font-semibold text-rose-400 font-mono"></span>
+        <div class="flex items-center gap-4">
+          <span>Toplam Çözülen: <strong id="total-solved" class="text-white">0</strong></span>
+          <button onclick="toggleFavoriteCurrent()" id="btn-fav-current" class="p-1.5 rounded-lg bg-slate-700 hover:bg-slate-600 text-slate-300 transition" title="Soruyu Beğen / Kaydet">
+            <i data-lucide="heart" class="w-5 h-5"></i>
+          </button>
+        </div>
+      </div>
+
+      <div class="bg-slate-800 rounded-2xl border border-slate-700 p-5 md:p-7 shadow-xl space-y-6">
+        
+        <div id="map-container" class="hidden w-full bg-slate-950/70 rounded-xl p-3 border border-slate-700/60 flex flex-col items-center">
+          <div class="w-full max-w-lg aspect-[16/9] relative flex items-center justify-center">
+            <svg viewBox="0 0 800 400" class="w-full h-full drop-shadow-md">
+              <path d="M 50 150 Q 150 100 250 120 T 450 110 T 650 120 Q 750 140 760 210 Q 730 280 650 270 T 450 290 T 250 310 Q 100 300 60 230 Z" fill="#1e293b" stroke="#475569" stroke-width="3"/>
+              <g id="svg-features"></g>
+            </svg>
+          </div>
+          <span id="map-legend" class="text-xs text-slate-400 mt-2 font-mono"></span>
+        </div>
+
+        <div>
+          <h2 id="question-text" class="text-base md:text-lg font-medium text-slate-100 leading-relaxed"></h2>
+        </div>
+
+        <div id="options-container" class="grid grid-cols-1 gap-3"></div>
+
+        <div id="explanation-box" class="hidden p-4 rounded-xl border text-sm leading-relaxed"></div>
+
+        <div class="flex justify-end pt-2">
+          <button id="btn-next" onclick="nextQuestion()" class="hidden px-6 py-2.5 bg-rose-600 hover:bg-rose-500 text-white font-semibold rounded-xl transition flex items-center gap-2">
+            Sonraki Soru (Yeni Üret) <i data-lucide="arrow-right" class="w-4 h-4"></i>
+          </button>
+        </div>
+      </div>
+    </div>
+
+    <div id="view-list" class="hidden space-y-4">
+      <div class="flex items-center justify-between">
+        <h2 id="list-title" class="text-lg font-bold text-white flex items-center gap-2"></h2>
+        <button onclick="switchTab('quiz')" class="text-xs bg-slate-700 hover:bg-slate-600 px-3 py-1.5 rounded-lg text-slate-200">
+          Soru Çözmeye Dön
+        </button>
+      </div>
+      <div id="list-container" class="space-y-3"></div>
+    </div>
+
+  </main>
+
+  <script>
+    // --- GENİŞLETİLMİŞ VERİ TABANI & OTOMATİK SORU JENERATÖRÜ ---
+    const geographyData = {
+      mountains: {
+        volcanic: ["Nemrut", "Süphan", "Tendürek", "Büyük Ağrı", "Küçük Ağrı", "Erciyes", "Hasan Dağı", "Melendiz", "Karadağ", "Karacadağ", "Kula"],
+        horst: ["Kaz Dağları", "Madra Dağı", "Yunt Dağı", "Bozdağlar", "Aydın Dağları", "Menteşe Dağları", "Nur (Amanos) Dağları"],
+        fold: ["Toros Dağları", "Köroğlu Dağları", "Küre Dağları", "Ilgaz Dağları", "Kaçkar Dağları", "Bolu Dağları", "Yıldız Dağları", "Canik Dağları"]
+      },
+      lakes: {
+        karstic: ["Salda", "Avlan", "Kestel", "Elmalı", "Suğla", "Kızılören"],
+        volcanic: ["Meke Maar Gölü", "Nemrut Krater Gölü", "Gölcük (Isparta)"],
+        tectonic: ["Tuz Gölü", "Beyşehir", "Eğirdir", "İznik", "Manyas (Kuş)", "Sapanca", "Uluabat", "Burdur", "Hazar", "Akşehir"],
+        set_alluvial: ["Köyceğiz", "Bafa (Çamiçi)", "Mogan", "Eymir", "Marmara Gölü"],
+        set_volcanic: ["Van Gölü", "Erçek", "Nazik", "Balık", "Çıldır", "Haçlı"],
+        set_coastal: ["Büyükçekmece", "Küçükçekmece", "Terkos (Durusu)"]
+      },
+      plateaus: {
+        karstic: ["Teke Platosu", "Taşeli Platosu"],
+        volcanic: ["Erzurum-Kars Platosu", "Ardahan Platosu"],
+        tabaka: ["Haymana", "Cihanbeyli", "Bozok", "Obruk", "Uzunyayla", "Gaziantep", "Şanlıurfa"],
+        asınım: ["Çatalca-Kocaeli Platosu"]
+      }
+    };
+
+    // Dinamik Soru Üretici Fonksiyon
+    function generateDynamicQuestion(id) {
+      const templates = ['mountain_type', 'lake_type', 'plateau_type', 'odd_one_out'];
+      const chosen = templates[Math.floor(Math.random() * templates.length)];
+
+      if (chosen === 'mountain_type') {
+        const types = [
+          { key: 'volcanic', name: 'Volkanik oluşumlu', desc: 'magmanın yeryüzüne çıkmasıyla oluşan volkanik dağlar' },
+          { key: 'horst', name: 'Kırılma (Horst-Graben)', desc: 'kırılma sonucu yükselen horst yapılı dağlar' },
+          { key: 'fold', name: 'Kıvrım (Orojenez)', desc: 'tortul tabakaların kıvrılmasıyla yükselen kıvrım dağları' }
+        ];
+        const targetType = types[Math.floor(Math.random() * types.length)];
+        const correctList = geographyData.mountains[targetType.key];
+        const correctItem = correctList[Math.floor(Math.random() * correctList.length)];
+
+        // Diğer tiplerden 4 yanlış seçenek al
+        const otherTypes = types.filter(t => t.key !== targetType.key);
+        let wrongs = [];
+        while (wrongs.length < 4) {
+          const randT = otherTypes[Math.floor(Math.random() * otherTypes.length)];
+          const candidate = geographyData.mountains[randT.key][Math.floor(Math.random() * geographyData.mountains[randT.key].length)];
+          if (!wrongs.includes(candidate)) wrongs.push(candidate);
+        }
+
+        const options = [...wrongs, correctItem].sort(() => Math.random() - 0.5);
+        const correctIdx = options.indexOf(correctItem);
+
+        return {
+          id: id,
+          category: "Dağ Oluşumları (Dinamik)",
+          type: "text",
+          text: `Aşağıda verilen dağlardan hangisi <b>${targetType.name}</b> bir dağdır?`,
+          options: options,
+          correct: correctIdx,
+          explanation: `<b>${correctItem}</b>, ${targetType.desc} arasında yer alır.`
+        };
+      }
+
+      if (chosen === 'lake_type') {
+        const types = [
+          { key: 'karstic', name: 'Karstik' },
+          { key: 'tectonic', name: 'Tektonik' },
+          { key: 'set_volcanic', name: 'Lav Seti' },
+          { key: 'set_alluvial', name: 'Alüvyal Set' },
+          { key: 'set_coastal', name: 'Kıyı Set (Lagün)' }
+        ];
+        const targetType = types[Math.floor(Math.random() * types.length)];
+        const correctList = geographyData.lakes[targetType.key];
+        const correctItem = correctList[Math.floor(Math.random() * correctList.length)];
+
+        const otherTypes = types.filter(t => t.key !== targetType.key);
+        let wrongs = [];
+        while (wrongs.length < 4) {
+          const randT = otherTypes[Math.floor(Math.random() * otherTypes.length)];
+          const candidate = geographyData.lakes[randT.key][Math.floor(Math.random() * geographyData.lakes[randT.key].length)];
+          if (!wrongs.includes(candidate)) wrongs.push(candidate);
+        }
+
+        const options = [...wrongs, correctItem].sort(() => Math.random() - 0.5);
+        const correctIdx = options.indexOf(correctItem);
+
+        return {
+          id: id,
+          category: "Göller & Oluşumlar (Dinamik)",
+          type: "text",
+          text: `Aşağıdaki göllerden hangisi oluşum kökeni bakımından <b>${targetType.name}</b> bir göldür?`,
+          options: options,
+          correct: correctIdx,
+          explanation: `<b>${correctItem}</b>, oluşum kökeni itibarıyla bir <b>${targetType.name}</b> göldür.`
+        };
+      }
+
+      // Plato veya Farklı Olanı Bul Şablonu
+      const targetPlat = geographyData.plateaus.karstic[0];
+      return {
+        id: id,
+        category: "Platolar (Dinamik)",
+        type: "text",
+        text: "Kalker ve eriyebilen kayaçlar üzerinde gelişmiş <b>Karstik Plato</b> sahası aşağıdakilerden hangisidir?",
+        options: ["Teke Platosu", "Bozok Platosu", "Cihanbeyli Platosu", "Erzurum-Kars Platosu", "Yazılıkaya Platosu"],
+        correct: 0,
+        explanation: "Teke ve Taşeli platoları Türkiye'nin en karakteristik karstik aşınım platolarıdır."
+      };
+    }
+
+    // --- STATE YÖNETİMİ ---
+    let questionBank = JSON.parse(localStorage.getItem('kpss_question_bank') || '[]');
+    let currentQuestionIndex = parseInt(localStorage.getItem('kpss_last_index') || '0', 10);
+    let favorites = JSON.parse(localStorage.getItem('kpss_favorites') || '[]');
+    let wrongs = JSON.parse(localStorage.getItem('kpss_wrongs') || '[]');
+    let corrects = JSON.parse(localStorage.getItem('kpss_corrects') || '[]');
+    let answeredQuestions = JSON.parse(localStorage.getItem('kpss_answered') || '{}');
+
+    // Başlangıçta havuzu doldur (varsa koru, yoksa ilk 10'u üret)
+    if (questionBank.length === 0) {
+      for (let i = 1; i <= 20; i++) {
+        questionBank.push(generateDynamicQuestion(i));
+      }
+      localStorage.setItem('kpss_question_bank', JSON.stringify(questionBank));
+    }
+
+    function saveState() {
+      localStorage.setItem('kpss_favorites', JSON.stringify(favorites));
+      localStorage.setItem('kpss_wrongs', JSON.stringify(wrongs));
+      localStorage.setItem('kpss_corrects', JSON.stringify(corrects));
+      localStorage.setItem('kpss_answered', JSON.stringify(answeredQuestions));
+      localStorage.setItem('kpss_last_index', currentQuestionIndex.toString());
+      localStorage.setItem('kpss_question_bank', JSON.stringify(questionBank));
+      updateCounters();
+    }
+
+    function updateCounters() {
+      document.getElementById('fav-count').textContent = favorites.length;
+      document.getElementById('wrong-count').textContent = wrongs.length;
+      document.getElementById('correct-count').textContent = corrects.length;
+      document.getElementById('total-solved').textContent = Object.keys(answeredQuestions).length;
+    }
+
+    function renderQuestion(index) {
+      // Eğer sona gelindiyse yeni dinamik soru üret ve bankaya ekle
+      if (index >= questionBank.length) {
+        const newQ = generateDynamicQuestion(questionBank.length + 1);
+        questionBank.push(newQ);
+      }
+
+      currentQuestionIndex = index;
+      saveState();
+
+      const q = questionBank[index];
+      document.getElementById('question-category').textContent = q.category;
+      document.getElementById('question-text').innerHTML = q.text.replace(/\n/g, '<br>');
+      
+      const favBtn = document.getElementById('btn-fav-current');
+      if (favorites.includes(q.id)) {
+        favBtn.classList.add('text-pink-500', 'bg-pink-500/20');
+      } else {
+        favBtn.classList.remove('text-pink-500', 'bg-pink-500/20');
+      }
+
+      // Harita Alanı
+      const mapContainer = document.getElementById('map-container');
+      mapContainer.classList.add('hidden');
+
+      // Seçenekler
+      const optionsContainer = document.getElementById('options-container');
+      optionsContainer.innerHTML = '';
+      const letters = ['A', 'B', 'C', 'D', 'E'];
+
+      q.options.forEach((opt, idx) => {
+        const btn = document.createElement('button');
+        btn.className = "w-full text-left p-3.5 rounded-xl bg-slate-700/60 hover:bg-slate-700 border border-slate-600/60 transition flex items-start gap-3 text-sm md:text-base group";
+        btn.id = `opt-${idx}`;
+        btn.innerHTML = `
+          <span class="w-6 h-6 rounded-lg bg-slate-800 border border-slate-600 flex items-center justify-center text-xs font-bold text-slate-300 group-hover:border-rose-400 shrink-0">
+            ${letters[idx]}
+          </span>
+          <span class="flex-1">${opt}</span>
+        `;
+        btn.onclick = () => selectAnswer(idx);
+        optionsContainer.appendChild(btn);
+      });
+
+      document.getElementById('explanation-box').className = "hidden";
+      document.getElementById('btn-next').classList.add('hidden');
+    }
+
+    function selectAnswer(selectedIdx) {
+      const q = questionBank[currentQuestionIndex];
+      const isCorrect = selectedIdx === q.correct;
+      answeredQuestions[q.id] = isCorrect;
+
+      if (isCorrect) {
+        if (!corrects.includes(q.id)) corrects.push(q.id);
+        wrongs = wrongs.filter(id => id !== q.id);
+      } else {
+        if (!wrongs.includes(q.id)) wrongs.push(q.id);
+        corrects = corrects.filter(id => id !== q.id);
+      }
+      saveState();
+
+      q.options.forEach((_, idx) => {
+        const btn = document.getElementById(`opt-${idx}`);
+        btn.disabled = true;
+        if (idx === q.correct) {
+          btn.className = "w-full text-left p-3.5 rounded-xl bg-emerald-950/80 border-2 border-emerald-500 text-emerald-100 flex items-start gap-3 text-sm md:text-base";
+        } else if (idx === selectedIdx && !isCorrect) {
+          btn.className = "w-full text-left p-3.5 rounded-xl bg-rose-950/80 border-2 border-rose-500 text-rose-100 flex items-start gap-3 text-sm md:text-base";
+        } else {
+          btn.className = "w-full text-left p-3.5 rounded-xl bg-slate-800/40 border border-slate-700/50 text-slate-500 opacity-60 flex items-start gap-3 text-sm md:text-base";
+        }
+      });
+
+      const expBox = document.getElementById('explanation-box');
+      expBox.className = `p-4 rounded-xl border text-sm leading-relaxed ${isCorrect ? 'bg-emerald-900/30 border-emerald-700 text-emerald-200' : 'bg-rose-900/30 border-rose-700 text-rose-200'}`;
+      expBox.innerHTML = `
+        <div class="font-bold flex items-center gap-1.5 mb-1">
+          <i data-lucide="${isCorrect ? 'check-circle' : 'alert-triangle'}" class="w-4 h-4"></i>
+          ${isCorrect ? 'Tebrikler, Doğru Cevap!' : 'Yanlış Cevap!'}
+        </div>
+        <div>${q.explanation}</div>
+      `;
+      expBox.classList.remove('hidden');
+
+      document.getElementById('btn-next').classList.remove('hidden');
+      lucide.createIcons();
+    }
+
+    function nextQuestion() {
+      renderQuestion(currentQuestionIndex + 1);
+    }
+
+    function toggleFavoriteCurrent() {
+      const q = questionBank[currentQuestionIndex];
+      if (favorites.includes(q.id)) {
+        favorites = favorites.filter(id => id !== q.id);
+      } else {
+        favorites.push(q.id);
+      }
+      saveState();
+      renderQuestion(currentQuestionIndex);
+    }
+
+    function switchTab(tab) {
+      const tabs = ['quiz', 'favorites', 'wrongs', 'corrects'];
+      tabs.forEach(t => {
+        const btn = document.getElementById(`tab-${t}`);
+        if (t === tab) {
+          btn.className = "px-3 py-1.5 rounded-lg text-sm font-medium bg-rose-600 text-white flex items-center gap-1.5 transition";
+        } else {
+          btn.className = "px-3 py-1.5 rounded-lg text-sm font-medium bg-slate-700 hover:bg-slate-600 text-slate-200 flex items-center gap-1.5 transition";
+        }
+      });
+
+      const viewQuiz = document.getElementById('view-quiz');
+      const viewList = document.getElementById('view-list');
+
+      if (tab === 'quiz') {
+        viewQuiz.classList.remove('hidden');
+        viewList.classList.add('hidden');
+      } else {
+        viewQuiz.classList.add('hidden');
+        viewList.classList.remove('hidden');
+        renderFilteredList(tab);
+      }
+    }
+
+    function renderFilteredList(type) {
+      const listContainer = document.getElementById('list-container');
+      const listTitle = document.getElementById('list-title');
+      listContainer.innerHTML = '';
+
+      let targetIds = type === 'favorites' ? favorites : (type === 'wrongs' ? wrongs : corrects);
+      let titleText = type === 'favorites' ? 'Beğenilen Sorular' : (type === 'wrongs' ? 'Yanlış Yapılan Sorular' : 'Doğru Yapılan Sorular');
+      
+      listTitle.innerHTML = `${titleText} (${targetIds.length})`;
+
+      if (targetIds.length === 0) {
+        listContainer.innerHTML = `<div class="p-8 text-center bg-slate-800 rounded-xl border border-slate-700 text-slate-400">Henüz bu listede soru bulunmuyor.</div>`;
+        return;
+      }
+
+      targetIds.forEach(id => {
+        const qIndex = questionBank.findIndex(item => item.id === id);
+        const q = questionBank[qIndex];
+        if (!q) return;
+
+        const card = document.createElement('div');
+        card.className = "bg-slate-800 p-4 rounded-xl border border-slate-700 space-y-2 hover:border-slate-500 transition";
+        card.innerHTML = `
+          <div class="flex justify-between items-start gap-2">
+            <span class="text-xs bg-slate-700 text-rose-300 px-2 py-0.5 rounded font-mono">${q.category}</span>
+            <button onclick="goToQuestion(${qIndex})" class="text-xs bg-rose-600 hover:bg-rose-500 text-white px-2.5 py-1 rounded-lg">
+              Bu Soruyu Çöz
+            </button>
+          </div>
+          <p class="text-sm font-medium text-slate-200 line-clamp-2">${q.text.replace(/<[^>]*>?/gm, '')}</p>
+        `;
+        listContainer.appendChild(card);
+      });
+
+      lucide.createIcons();
+    }
+
+    function goToQuestion(index) {
+      switchTab('quiz');
+      renderQuestion(index);
+    }
+
+    window.onload = () => {
+      updateCounters();
+      renderQuestion(currentQuestionIndex);
+      lucide.createIcons();
+    };
+  </script>
+</body>
+</html>
           <i data-lucide="heart" class="w-4 h-4 text-pink-400"></i> Beğenilenler (<span id="fav-count">0</span>)
         </button>
         <button onclick="switchTab('wrongs')" id="tab-wrongs" class="px-3 py-1.5 rounded-lg text-sm font-medium bg-slate-700 hover:bg-slate-600 text-slate-200 flex items-center gap-1.5 transition">
