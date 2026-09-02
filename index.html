@@ -12,16 +12,17 @@
     }
     @keyframes pulse-ring {
       0%, 100% { opacity: 0.9; transform: scale(1); }
-      50% { opacity: 0.4; transform: scale(1.1); }
+      50% { opacity: 0.4; transform: scale(1.15); }
     }
   </style>
 </head>
 <body class="bg-slate-900 text-slate-100 min-h-screen flex flex-col font-sans">
 
+  <!-- Üst Menü -->
   <header class="bg-slate-800 border-b border-slate-700 sticky top-0 z-50">
     <div class="max-w-5xl mx-auto px-4 py-3 flex flex-wrap items-center justify-between gap-3">
       <div class="flex items-center gap-2">
-        <i data-lucide="compass" class="text-rose-500 w-6 h-6"></i>
+        <i data-lucide="map" class="text-rose-500 w-6 h-6"></i>
         <h1 class="text-lg md:text-xl font-bold tracking-tight text-white">KPSS Coğrafya Soru Motoru</h1>
       </div>
       
@@ -34,6 +35,424 @@
         </button>
         <button onclick="switchTab('wrongs')" id="tab-wrongs" class="px-3 py-1.5 rounded-lg text-sm font-medium bg-slate-700 hover:bg-slate-600 text-slate-200 flex items-center gap-1.5 transition">
           <i data-lucide="x-circle" class="w-4 h-4 text-rose-400"></i> Yanlışlar (<span id="wrong-count">0</span>)
+        </button>
+        <button onclick="switchTab('corrects')" id="tab-corrects" class="px-3 py-1.5 rounded-lg text-sm font-medium bg-slate-700 hover:bg-slate-600 text-slate-200 flex items-center gap-1.5 transition">
+          <i data-lucide="check-circle-2" class="w-4 h-4 text-emerald-400"></i> Doğrular (<span id="correct-count">0</span>)
+        </button>
+      </nav>
+    </div>
+  </header>
+
+  <!-- Ana İçerik -->
+  <main class="max-w-4xl w-full mx-auto p-4 flex-1 flex flex-col justify-center">
+
+    <!-- Soru Çözme Görünümü -->
+    <div id="view-quiz" class="space-y-4">
+      <div class="flex justify-between items-center bg-slate-800/80 px-4 py-2.5 rounded-xl border border-slate-700 text-xs md:text-sm text-slate-300">
+        <span id="question-category" class="font-semibold text-rose-400 font-mono"></span>
+        <div class="flex items-center gap-4">
+          <span>Toplam Çözülen: <strong id="total-solved" class="text-white">0</strong></span>
+          <button onclick="toggleFavoriteCurrent()" id="btn-fav-current" class="p-1.5 rounded-lg bg-slate-700 hover:bg-slate-600 text-slate-300 transition" title="Soruyu Beğen">
+            <i data-lucide="heart" class="w-5 h-5"></i>
+          </button>
+        </div>
+      </div>
+
+      <!-- Soru Kartı -->
+      <div class="bg-slate-800 rounded-2xl border border-slate-700 p-5 md:p-7 shadow-xl space-y-6">
+        
+        <!-- Harita Alanı -->
+        <div id="map-container" class="hidden w-full bg-slate-950/80 rounded-xl p-3 border border-slate-700/60 flex flex-col items-center">
+          <div class="w-full max-w-lg aspect-[16/9] relative flex items-center justify-center">
+            <svg viewBox="0 0 800 400" class="w-full h-full drop-shadow-md">
+              <path d="M 50 150 Q 150 100 250 120 T 450 110 T 650 120 Q 750 140 760 210 Q 730 280 650 270 T 450 290 T 250 310 Q 100 300 60 230 Z" fill="#1e293b" stroke="#475569" stroke-width="3"/>
+              <g id="svg-features"></g>
+            </svg>
+          </div>
+          <span id="map-legend" class="text-xs text-rose-400 mt-2 font-mono font-medium"></span>
+        </div>
+
+        <!-- Soru Metni -->
+        <div>
+          <h2 id="question-text" class="text-base md:text-lg font-medium text-slate-100 leading-relaxed"></h2>
+        </div>
+
+        <!-- Seçenekler -->
+        <div id="options-container" class="grid grid-cols-1 gap-3"></div>
+
+        <!-- Açıklama -->
+        <div id="explanation-box" class="hidden p-4 rounded-xl border text-sm leading-relaxed"></div>
+
+        <!-- Sıradaki Butonu -->
+        <div class="flex justify-end pt-2">
+          <button id="btn-next" onclick="nextQuestion()" class="hidden px-6 py-2.5 bg-rose-600 hover:bg-rose-500 text-white font-semibold rounded-xl transition flex items-center gap-2">
+            Sonraki Soru <i data-lucide="arrow-right" class="w-4 h-4"></i>
+          </button>
+        </div>
+      </div>
+    </div>
+
+    <!-- Liste Görünümü -->
+    <div id="view-list" class="hidden space-y-4">
+      <div class="flex items-center justify-between">
+        <h2 id="list-title" class="text-lg font-bold text-white flex items-center gap-2"></h2>
+        <button onclick="switchTab('quiz')" class="text-xs bg-slate-700 hover:bg-slate-600 px-3 py-1.5 rounded-lg text-slate-200">
+          Soru Çözmeye Dön
+        </button>
+      </div>
+      <div id="list-container" class="space-y-3"></div>
+    </div>
+
+  </main>
+
+  <script>
+    // Gerçek KPSS Coğrafya Veri Tabanı
+    const geographyData = {
+      mountains: {
+        volcanic: ["Nemrut", "Süphan", "Tendürek", "Ağrı Dağı", "Erciyes", "Hasan Dağı", "Melendiz", "Karadağ", "Karacadağ", "Kula Volkanları"],
+        horst: ["Kaz Dağları", "Madra Dağı", "Yunt Dağı", "Bozdağlar", "Aydın Dağları", "Menteşe Dağları", "Nur (Amanos) Dağları"],
+        fold: ["Toros Dağları", "Köroğlu Dağları", "Küre Dağları", "Ilgaz Dağları", "Kaçkar Dağları", "Bolu Dağları", "Yıldız Dağları", "Canik Dağları"]
+      },
+      lakes: {
+        karstic: ["Salda Gölü", "Avlan Gölü", "Kestel Gölü", "Elmalı Gölü", "Suğla Gölü"],
+        volcanic: ["Meke Maar Gölü", "Nemrut Krater Gölü", "Gölcük"],
+        tectonic: ["Tuz Gölü", "Beyşehir Gölü", "Eğirdir Gölü", "İznik Gölü", "Manyas Gölü", "Sapanca Gölü", "Hazar Gölü", "Akşehir Gölü"],
+        set_alluvial: ["Köyceğiz Gölü", "Bafa (Çamiçi) Gölü", "Mogan Gölü", "Eymir Gölü", "Marmara Gölü"],
+        set_volcanic: ["Van Gölü", "Erçek Gölü", "Nazik Gölü", "Balık Gölü", "Çıldır Gölü", "Haçlı Gölü"]
+      },
+      mapScenarios: [
+        {
+          category: "Harita / Volkanizma",
+          points: [{ x: 230, y: 190, label: "Kula" }, { x: 420, y: 220, label: "Karadağ" }, { x: 470, y: 200, label: "Erciyes-Hasan" }, { x: 670, y: 190, label: "Ağrı-Tendürek" }],
+          text: "Yukarıdaki Türkiye haritasında kırmızı işaretlerle gösterilen alanların ortak özelliği aşağıdakilerden hangisidir?",
+          options: ["Genç volkanik sahalar olmaları", "Karstik aşınım şekillerinin yaygın olması", "Buzul göllerinin bulunması", "Taş kömürü yataklarının bulunması", "Delta ovaları olmaları"],
+          correct: 0,
+          explanation: "Haritada Kula, İç Anadolu volkanları ve Doğu Anadolu volkanik kuşağı gösterilmiştir. Bu alanlar Türkiye'deki genç volkanik arazilerdir."
+        },
+        {
+          category: "Harita / Karstik Alanlar",
+          points: [{ x: 270, y: 310, label: "Teke" }, { x: 340, y: 320, label: "Taşeli" }],
+          text: "Haritada taranarak gösterilen alanlarla ilgili aşağıda verilen bilgilerden hangisi <b>doğrudur</b>?",
+          options: ["Kalkerli ve karstik arazi yapısı yaygındır", "Türkiye'nin en önemli tarım ve sanayi bölgesidir", "Volkanik platolar yer alır", "Yıllık yağış miktarı en az olan alandır", "Linyit yatakları bakımından en zengin yerdir"],
+          correct: 0,
+          explanation: "İşaretlenen yerler Teke ve Taşeli platolarıdır. Bu sahalar kalker (kireçtaşı) tabanlı karstik arazilerdir; yerleşim ve tarım seyrektir."
+        },
+        {
+          category: "Harita / Düzlük Alanlar",
+          points: [{ x: 200, y: 90, label: "I (Ergene)" }, { x: 400, y: 220, label: "II (Konya-Tuz G.)" }, { x: 620, y: 290, label: "III (Güneydoğu)" }],
+          text: "Haritada işaretlenen numaralı alanların ortak morfolojik özelliği aşağıdakilerden hangisidir?",
+          options: ["Yer şekillerinin sade ve düzlük olması", "Engebeli ve buzul topoğrafyasının hakim olması", "Kıvrım dağlarının bulunması", "Karstik mağara ve obrukların yoğun olması", "Yüksek volkan konilerinden oluşması"],
+          correct: 0,
+          explanation: "Ergene Havzası, Konya Kapalı Havzası ve Güneydoğu düzlükleri Türkiye'de engebenin en az olduğu, yer şekillerinin sade olduğu sahalardır."
+        }
+      ]
+    };
+
+    // Dinamik Soru Üretici
+    function generateQuestion(id) {
+      const mode = Math.random();
+
+      // %35 İhtimalle Haritalı Soru Seç
+      if (mode < 0.35) {
+        const scenario = geographyData.mapScenarios[Math.floor(Math.random() * geographyData.mapScenarios.length)];
+        return {
+          id: id,
+          category: scenario.category,
+          type: "map",
+          mapData: { points: scenario.points, color: "#ef4444", legend: "Haritada kırmızı ile işaretlenmiş alanlar" },
+          text: scenario.text,
+          options: scenario.options,
+          correct: scenario.correct,
+          explanation: scenario.explanation
+        };
+      }
+
+      // %35 İhtimalle Dağ Sorusu Üret
+      if (mode < 0.70) {
+        const types = [
+          { key: 'volcanic', name: 'Volkanik oluşumlu', desc: 'volkanik faaliyetler' },
+          { key: 'horst', name: 'Kırık (Horst)', desc: 'kırılma ve faylanma' },
+          { key: 'fold', name: 'Kıvrım Dağları', desc: 'levha sıkışması sonucu kıvrılma' }
+        ];
+        const target = types[Math.floor(Math.random() * types.length)];
+        const correctItem = geographyData.mountains[target.key][Math.floor(Math.random() * geographyData.mountains[target.key].length)];
+        
+        const others = types.filter(t => t.key !== target.key);
+        let wrongs = [];
+        while (wrongs.length < 4) {
+          const randT = others[Math.floor(Math.random() * others.length)];
+          const candidate = geographyData.mountains[randT.key][Math.floor(Math.random() * geographyData.mountains[randT.key].length)];
+          if (!wrongs.includes(candidate)) wrongs.push(candidate);
+        }
+
+        const options = [...wrongs, correctItem].sort(() => Math.random() - 0.5);
+        return {
+          id: id,
+          category: "Dağ Tipleri (Dinamik)",
+          type: "text",
+          text: `Aşağıdaki dağlardan hangisi oluşum kökeni bakımından <b>${target.name}</b> bir dağdır?`,
+          options: options,
+          correct: options.indexOf(correctItem),
+          explanation: `<b>${correctItem}</b>, ${target.desc} sonucu oluşmuş bir dağdır.`
+        };
+      }
+
+      // %30 İhtimalle Göl Oluşum Sorusu Üret
+      const lakeTypes = [
+        { key: 'karstic', name: 'Karstik' },
+        { key: 'tectonic', name: 'Tektonik' },
+        { key: 'set_volcanic', name: 'Lav Seti' },
+        { key: 'set_alluvial', name: 'Alüvyal Set' }
+      ];
+      const targetLake = lakeTypes[Math.floor(Math.random() * lakeTypes.length)];
+      const correctLake = geographyData.lakes[targetLake.key][Math.floor(Math.random() * geographyData.lakes[targetLake.key].length)];
+
+      const otherLakes = lakeTypes.filter(t => t.key !== targetLake.key);
+      let wrongLakes = [];
+      while (wrongLakes.length < 4) {
+        const randT = otherLakes[Math.floor(Math.random() * otherLakes.length)];
+        const candidate = geographyData.lakes[randT.key][Math.floor(Math.random() * geographyData.lakes[randT.key].length)];
+        if (!wrongLakes.includes(candidate)) wrongLakes.push(candidate);
+      }
+
+      const lOptions = [...wrongLakes, correctLake].sort(() => Math.random() - 0.5);
+      return {
+        id: id,
+        category: "Göl Oluşumları (Dinamik)",
+        type: "text",
+        text: `Aşağıda verilen göllerden hangisi <b>${targetLake.name}</b> kökenli bir göldür?`,
+        options: lOptions,
+        correct: lOptions.indexOf(correctLake),
+        explanation: `<b>${correctLake}</b>, oluşum türü olarak <b>${targetLake.name}</b> bir göldür.`
+      };
+    }
+
+    // --- STATE YÖNETİMİ ---
+    let questionBank = JSON.parse(localStorage.getItem('kpss_qbank_v3') || '[]');
+    let currentIdx = parseInt(localStorage.getItem('kpss_cur_idx_v3') || '0', 10);
+    let favorites = JSON.parse(localStorage.getItem('kpss_favs_v3') || '[]');
+    let wrongs = JSON.parse(localStorage.getItem('kpss_wrongs_v3') || '[]');
+    let corrects = JSON.parse(localStorage.getItem('kpss_corrects_v3') || '[]');
+    let solvedCount = parseInt(localStorage.getItem('kpss_solved_v3') || '0', 10);
+
+    if (questionBank.length === 0) {
+      for (let i = 1; i <= 30; i++) {
+        questionBank.push(generateQuestion(i));
+      }
+      localStorage.setItem('kpss_qbank_v3', JSON.stringify(questionBank));
+    }
+
+    function saveState() {
+      localStorage.setItem('kpss_favs_v3', JSON.stringify(favorites));
+      localStorage.setItem('kpss_wrongs_v3', JSON.stringify(wrongs));
+      localStorage.setItem('kpss_corrects_v3', JSON.stringify(corrects));
+      localStorage.setItem('kpss_cur_idx_v3', currentIdx.toString());
+      localStorage.setItem('kpss_qbank_v3', JSON.stringify(questionBank));
+      localStorage.setItem('kpss_solved_v3', solvedCount.toString());
+      updateCounters();
+    }
+
+    function updateCounters() {
+      document.getElementById('fav-count').textContent = favorites.length;
+      document.getElementById('wrong-count').textContent = wrongs.length;
+      document.getElementById('correct-count').textContent = corrects.length;
+      document.getElementById('total-solved').textContent = solvedCount;
+    }
+
+    function renderQuestion(index) {
+      if (index >= questionBank.length) {
+        questionBank.push(generateQuestion(questionBank.length + 1));
+      }
+
+      currentIdx = index;
+      saveState();
+
+      const q = questionBank[index];
+      document.getElementById('question-category').textContent = q.category;
+      document.getElementById('question-text').innerHTML = q.text.replace(/\n/g, '<br>');
+      
+      const favBtn = document.getElementById('btn-fav-current');
+      if (favorites.includes(q.id)) {
+        favBtn.classList.add('text-pink-500', 'bg-pink-500/20');
+      } else {
+        favBtn.classList.remove('text-pink-500', 'bg-pink-500/20');
+      }
+
+      // Harita Alanı
+      const mapContainer = document.getElementById('map-container');
+      const svgFeatures = document.getElementById('svg-features');
+      svgFeatures.innerHTML = '';
+
+      if (q.type === 'map' && q.mapData) {
+        mapContainer.classList.remove('hidden');
+        document.getElementById('map-legend').textContent = q.mapData.legend || '';
+        
+        q.mapData.points.forEach(pt => {
+          const circleG = document.createElementNS("http://www.w3.org/2000/svg", "g");
+          circleG.innerHTML = `
+            <circle cx="${pt.x}" cy="${pt.y}" r="15" fill="${q.mapData.color}" opacity="0.35" class="map-pulse" />
+            <circle cx="${pt.x}" cy="${pt.y}" r="8" fill="${q.mapData.color}" stroke="#ffffff" stroke-width="2" />
+            <text x="${pt.x}" y="${pt.y - 12}" fill="#ffffff" font-size="12" font-weight="bold" text-anchor="middle">${pt.label}</text>
+          `;
+          svgFeatures.appendChild(circleG);
+        });
+      } else {
+        mapContainer.classList.add('hidden');
+      }
+
+      // Seçenekler
+      const optionsContainer = document.getElementById('options-container');
+      optionsContainer.innerHTML = '';
+      const letters = ['A', 'B', 'C', 'D', 'E'];
+
+      q.options.forEach((opt, idx) => {
+        const btn = document.createElement('button');
+        btn.className = "w-full text-left p-3.5 rounded-xl bg-slate-700/60 hover:bg-slate-700 border border-slate-600/60 transition flex items-start gap-3 text-sm md:text-base group";
+        btn.id = `opt-${idx}`;
+        btn.innerHTML = `
+          <span class="w-6 h-6 rounded-lg bg-slate-800 border border-slate-600 flex items-center justify-center text-xs font-bold text-slate-300 group-hover:border-rose-400 shrink-0">
+            ${letters[idx]}
+          </span>
+          <span class="flex-1">${opt}</span>
+        `;
+        btn.onclick = () => selectAnswer(idx);
+        optionsContainer.appendChild(btn);
+      });
+
+      document.getElementById('explanation-box').className = "hidden";
+      document.getElementById('btn-next').classList.add('hidden');
+    }
+
+    function selectAnswer(selectedIdx) {
+      const q = questionBank[currentIdx];
+      const isCorrect = selectedIdx === q.correct;
+      solvedCount++;
+
+      if (isCorrect) {
+        if (!corrects.includes(q.id)) corrects.push(q.id);
+        wrongs = wrongs.filter(id => id !== q.id);
+      } else {
+        if (!wrongs.includes(q.id)) wrongs.push(q.id);
+        corrects = corrects.filter(id => id !== q.id);
+      }
+      saveState();
+
+      q.options.forEach((_, idx) => {
+        const btn = document.getElementById(`opt-${idx}`);
+        btn.disabled = true;
+        if (idx === q.correct) {
+          btn.className = "w-full text-left p-3.5 rounded-xl bg-emerald-950/80 border-2 border-emerald-500 text-emerald-100 flex items-start gap-3 text-sm md:text-base";
+        } else if (idx === selectedIdx && !isCorrect) {
+          btn.className = "w-full text-left p-3.5 rounded-xl bg-rose-950/80 border-2 border-rose-500 text-rose-100 flex items-start gap-3 text-sm md:text-base";
+        } else {
+          btn.className = "w-full text-left p-3.5 rounded-xl bg-slate-800/40 border border-slate-700/50 text-slate-500 opacity-60 flex items-start gap-3 text-sm md:text-base";
+        }
+      });
+
+      const expBox = document.getElementById('explanation-box');
+      expBox.className = `p-4 rounded-xl border text-sm leading-relaxed ${isCorrect ? 'bg-emerald-900/30 border-emerald-700 text-emerald-200' : 'bg-rose-900/30 border-rose-700 text-rose-200'}`;
+      expBox.innerHTML = `
+        <div class="font-bold flex items-center gap-1.5 mb-1">
+          <i data-lucide="${isCorrect ? 'check-circle' : 'alert-triangle'}" class="w-4 h-4"></i>
+          ${isCorrect ? 'Tebrikler, Doğru Cevap!' : 'Yanlış Cevap!'}
+        </div>
+        <div>${q.explanation}</div>
+      `;
+      expBox.classList.remove('hidden');
+
+      document.getElementById('btn-next').classList.remove('hidden');
+      lucide.createIcons();
+    }
+
+    function nextQuestion() {
+      renderQuestion(currentIdx + 1);
+    }
+
+    function toggleFavoriteCurrent() {
+      const q = questionBank[currentIdx];
+      if (favorites.includes(q.id)) {
+        favorites = favorites.filter(id => id !== q.id);
+      } else {
+        favorites.push(q.id);
+      }
+      saveState();
+      renderQuestion(currentIdx);
+    }
+
+    function switchTab(tab) {
+      const tabs = ['quiz', 'favorites', 'wrongs', 'corrects'];
+      tabs.forEach(t => {
+        const btn = document.getElementById(`tab-${t}`);
+        if (t === tab) {
+          btn.className = "px-3 py-1.5 rounded-lg text-sm font-medium bg-rose-600 text-white flex items-center gap-1.5 transition";
+        } else {
+          btn.className = "px-3 py-1.5 rounded-lg text-sm font-medium bg-slate-700 hover:bg-slate-600 text-slate-200 flex items-center gap-1.5 transition";
+        }
+      });
+
+      const viewQuiz = document.getElementById('view-quiz');
+      const viewList = document.getElementById('view-list');
+
+      if (tab === 'quiz') {
+        viewQuiz.classList.remove('hidden');
+        viewList.classList.add('hidden');
+      } else {
+        viewQuiz.classList.add('hidden');
+        viewList.classList.remove('hidden');
+        renderFilteredList(tab);
+      }
+    }
+
+    function renderFilteredList(type) {
+      const listContainer = document.getElementById('list-container');
+      const listTitle = document.getElementById('list-title');
+      listContainer.innerHTML = '';
+
+      let targetIds = type === 'favorites' ? favorites : (type === 'wrongs' ? wrongs : corrects);
+      let titleText = type === 'favorites' ? 'Beğenilen Sorular' : (type === 'wrongs' ? 'Yanlış Yapılan Sorular' : 'Doğru Yapılan Sorular');
+      
+      listTitle.innerHTML = `${titleText} (${targetIds.length})`;
+
+      if (targetIds.length === 0) {
+        listContainer.innerHTML = `<div class="p-8 text-center bg-slate-800 rounded-xl border border-slate-700 text-slate-400">Henüz bu listede soru bulunmuyor.</div>`;
+        return;
+      }
+
+      targetIds.forEach(id => {
+        const qIndex = questionBank.findIndex(item => item.id === id);
+        const q = questionBank[qIndex];
+        if (!q) return;
+
+        const card = document.createElement('div');
+        card.className = "bg-slate-800 p-4 rounded-xl border border-slate-700 space-y-2 hover:border-slate-500 transition";
+        card.innerHTML = `
+          <div class="flex justify-between items-start gap-2">
+            <span class="text-xs bg-slate-700 text-rose-300 px-2 py-0.5 rounded font-mono">${q.category}</span>
+            <button onclick="goToQuestion(${qIndex})" class="text-xs bg-rose-600 hover:bg-rose-500 text-white px-2.5 py-1 rounded-lg">
+              Bu Soruyu Çöz
+            </button>
+          </div>
+          <p class="text-sm font-medium text-slate-200 line-clamp-2">${q.text.replace(/<[^>]*>?/gm, '')}</p>
+        `;
+        listContainer.appendChild(card);
+      });
+
+      lucide.createIcons();
+    }
+
+    function goToQuestion(index) {
+      switchTab('quiz');
+      renderQuestion(index);
+    }
+
+    window.onload = () => {
+      updateCounters();
+      renderQuestion(currentIdx);
+      lucide.createIcons();
+    };
+  </script>
+</body>
+</html>
         </button>
         <button onclick="switchTab('corrects')" id="tab-corrects" class="px-3 py-1.5 rounded-lg text-sm font-medium bg-slate-700 hover:bg-slate-600 text-slate-200 flex items-center gap-1.5 transition">
           <i data-lucide="check-circle-2" class="w-4 h-4 text-emerald-400"></i> Doğrular (<span id="correct-count">0</span>)
