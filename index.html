@@ -12,7 +12,7 @@
     }
     @keyframes pulse-ring {
       0%, 100% { opacity: 0.8; transform: scale(1); }
-      50% { opacity: 0.2; transform: scale(1.4); }
+      50% { opacity: 0.2; transform: scale(1.3); }
     }
   </style>
 </head>
@@ -69,12 +69,12 @@
         <div id="map-container" class="hidden w-full bg-slate-950/90 rounded-xl p-3 border border-slate-700/60 flex flex-col items-center">
           <div class="w-full max-w-lg aspect-[16/9] relative flex items-center justify-center">
             <svg viewBox="0 0 1000 480" class="w-full h-full drop-shadow-lg">
-              <!-- Gerçek Türkiye Kıyı ve Sınır Çizgisi -->
+              <!-- Türkiye Kıyı ve Sınır Çizgisi -->
               <path d="M 120 85 Q 160 80 190 120 L 210 135 Q 230 145 220 160 L 195 180 Q 180 190 160 170 L 130 200 Q 110 230 120 270 L 150 280 Q 170 320 200 310 L 230 330 Q 280 340 310 390 L 330 420 Q 360 410 380 370 L 410 375 Q 460 380 500 370 L 530 320 Q 560 330 610 380 L 640 400 Q 680 430 730 410 L 800 420 Q 860 410 880 380 L 920 370 Q 960 330 950 290 L 970 240 Q 950 180 920 160 L 890 140 Q 840 120 800 130 L 760 110 Q 720 80 670 90 L 620 105 Q 580 85 530 95 L 480 85 Q 420 80 380 95 L 340 110 Q 290 100 240 90 Z" fill="#1e293b" stroke="#38bdf8" stroke-width="2.5" stroke-linejoin="round"/>
-              <!-- Van Gölü & Tuz Gölü Temsili -->
+              <!-- Van Gölü & Tuz Gölü -->
               <ellipse cx="880" cy="270" rx="28" ry="16" fill="#0f172a" stroke="#0284c7" stroke-width="1.5" />
               <ellipse cx="480" cy="250" rx="22" ry="32" fill="#0f172a" stroke="#0284c7" stroke-width="1.5" />
-              <!-- Dinamik Noktalar & İşaretler -->
+              <!-- Dinamik Noktalar -->
               <g id="svg-features"></g>
             </svg>
           </div>
@@ -113,7 +113,7 @@
   </main>
 
   <script>
-    // GENİŞ KPSS COĞRAFYA VERİTABANI
+    // GENİŞLETİLMİŞ KPSS COĞRAFYA VERİTABANI
     const geographyData = {
       mountains: {
         volcanic: ["Nemrut", "Süphan", "Tendürek", "Ağrı Dağı", "Erciyes", "Hasan Dağı", "Melendiz", "Karadağ", "Karacadağ", "Kula Volkanları"],
@@ -147,51 +147,65 @@
       ],
       mapScenarios: [
         {
-          category: "Volkanik Dağlar / Harita",
+          category: "Volkanik Alanlar / Harita",
           points: [
-            { x: 250, y: 240, label: "Kula" },
-            { x: 500, y: 310, label: "Karadağ" },
-            { x: 570, y: 260, label: "Erciyes-Hasan" },
-            { x: 860, y: 230, label: "Nemrut-Süphan" },
-            { x: 920, y: 190, label: "Ağrı Dağı" }
+            { x: 250, y: 240, label: "" },
+            { x: 500, y: 310, label: "" },
+            { x: 570, y: 260, label: "" },
+            { x: 860, y: 230, label: "" },
+            { x: 920, y: 190, label: "" }
           ],
-          text: "Yukarıdaki Türkiye haritasında kırmızı işaretli alanlar hangi morfolojik unsurların dağılışını göstermektedir?",
-          options: ["Genç volkanik sahalar ve volkan dağları", "Buzul aşındırmasının etkili olduğu alanlar", "Karstik aşınım platoları", "Taş kömürü yatakları", "Delta ovaları"],
+          text: "Yukarıdaki Türkiye haritasında kırmızı işaretlerle taranarak gösterilen alanların ortak jeolojik/morfolojik özelliği aşağıdakilerden hangisidir?",
+          options: ["Genç volkanik araziler ve volkan dağları olmaları", "Buzul aşındırmasının etkili olduğu sahalar olmaları", "Karstik aşınım platoları olmaları", "Taş kömürü yataklarının yaygın olması", "Delta ovalarından oluşmaları"],
           correct: 0,
-          explanation: "Haritada Manisa Kula, İç Anadolu volkanik hattı (Karadağ, Hasandağı, Erciyes) ve Doğu Anadolu volkan dizilimi (Nemrut, Süphan, Ağrı) gösterilmiştir."
+          explanation: "Haritada Manisa Kula, İç Anadolu volkanik hattı (Karadağ, Hasandağı, Erciyes) ve Doğu Anadolu volkan dizilimi (Nemrut, Süphan, Ağrı) işaretlenmiştir. Bunlar Türkiye'deki genç volkanik çıkış alanlarıdır."
         },
         {
           category: "Kıyı Tipleri / Harita",
           points: [
-            { x: 220, y: 140, label: "I (Ria - Boğaz)" },
-            { x: 190, y: 175, label: "II (Limanlı)" },
-            { x: 140, y: 270, label: "III (Enine Kıyı)" },
-            { x: 330, y: 400, label: "IV (Kaş - Dalmaçya)" },
-            { x: 740, y: 115, label: "V (Boyuna Kıyı)" }
+            { x: 220, y: 140, label: "I" },
+            { x: 190, y: 175, label: "II" },
+            { x: 140, y: 270, label: "III" },
+            { x: 330, y: 400, label: "IV" },
+            { x: 740, y: 115, label: "V" }
           ],
           text: "Haritada numaralandırılan kıyı alanlarından hangisinde <b>Dalmaçya Tipi Kıyılar</b> görülmektedir?",
           options: ["I", "II", "III", "IV", "V"],
-          correct: 3,
-          explanation: "Dalmaçya kıyı tipi Antalya <b>Kaş - Finike kıyılarında (IV)</b> yer alır."
+          correct: 3, // IV
+          explanation: "Dalmaçya kıyı tipi Antalya <b>Kaş - Finike kıyılarında (IV)</b> yer alır. (I: Ria - İstanbul Boğazı, II: Limanlı, III: Enine, V: Boyuna)."
         },
         {
           category: "Buzul Şekilleri / Harita",
           points: [
-            { x: 170, y: 120, label: "I (Ergene)" },
-            { x: 150, y: 260, label: "II (Ege)" },
-            { x: 520, y: 270, label: "III (Tuz G.)" },
-            { x: 590, y: 350, label: "IV (Bolkar-Aladağlar)" },
-            { x: 920, y: 340, label: "V (Hakkâri Cilo)" }
+            { x: 170, y: 120, label: "I" },
+            { x: 150, y: 260, label: "II" },
+            { x: 520, y: 270, label: "III" },
+            { x: 590, y: 350, label: "IV" },
+            { x: 920, y: 340, label: "V" }
           ],
-          text: "Haritada numaralandırılan alanların hangilerinde <b>buzul aşındırma ve biriktirme şekilleri (sirk, moren)</b> daha yaygındır?",
+          text: "Haritada numaralandırılan alanların hangilerinde <b>buzul aşındırma ve biriktirme şekilleri (sirk gölleri, morenler)</b> daha yaygındır?",
           options: ["I ve II", "I ve III", "II ve IV", "III ve V", "IV ve V"],
-          correct: 4,
-          explanation: "Buzul şekilleri Türkiye'nin yüksek dağlık alanları olan Bolkar-Aladağlar (IV) ve Hakkâri Cilo Dağları'nda (V) yaygındır."
+          correct: 4, // IV ve V
+          explanation: "Buzul şekilleri Türkiye'nin ortalama yükseltisi çok fazla olan yüksek dağlarında (Toroslar'daki Bolkar-Aladağlar kuşağı [IV] ve Doğu Anadolu'daki Hakkâri Cilo Dağları [V]) yaygındır."
+        },
+        {
+          category: "Platolar / Harita",
+          points: [
+            { x: 220, y: 140, label: "I" },
+            { x: 260, y: 250, label: "II" },
+            { x: 480, y: 220, label: "III" },
+            { x: 340, y: 380, label: "IV" },
+            { x: 880, y: 160, label: "V" }
+          ],
+          text: "Haritada numaralandırılan alanlardan hangisi Türkiye'nin <b>en yüksek lav (volkanik) platosu</b> alanını göstermektedir?",
+          options: ["I", "II", "III", "IV", "V"],
+          correct: 4, // V (Erzurum-Kars)
+          explanation: "V numaralı alan Türkiye'nin en yüksek lav platosu olan <b>Erzurum-Kars Platosu</b>'dur. (I: Çatalca-Kocaeli, II: Yazılıkaya, III: Cihanbeyli, IV: Taşeli)."
         }
       ]
     };
 
-    // Benzersiz soru üretici (Havuzu çeşitlendirir)
+    // Benzersiz ve dengeli soru jeneratörü
     function generateQuestion(id, modeIndex) {
       const modes = ['map', 'jips_karst', 'human_impact', 'land_use', 'orogeny_vs_volcano', 'lava_plateau', 'geology', 'plain_delta', 'lake_shallow', 'lake_type'];
       const chosen = modes[modeIndex % modes.length];
@@ -216,10 +230,10 @@
           id: id,
           category: "Kayaç Tipleri & Karstik Şekiller",
           type: "text",
-          text: "Aşağıdaki illerin hangisinde <b>jips (alçı taşı) karstına</b> ait yer şekilleri daha yaygındır?",
+          text: "Aşağıdaki illerin hangisinde <b>jips (alçı taşı) karstına</b> ait yer şekilleri (mağaralar, dolinler) daha yaygındır?",
           options: options,
           correct: options.indexOf("Sivas"),
-          explanation: "Türkiye'de jips karstı en belirgin olarak <b>Sivas, Çankırı ve Erzincan</b> çevrelerinde görülür."
+          explanation: "Türkiye'de jips karstı en belirgin olarak <b>Sivas, Çankırı ve Erzincan</b> çevrelerinde görülür. Akdeniz'dekiler kalker kökenlidir."
         };
       }
 
@@ -228,10 +242,10 @@
           id: id,
           category: "Çevre & İnsan Etkisi",
           type: "text",
-          text: "I. Doğal göllerin su seviyesinin çekilmesi ve kuruması\nII. Peribacası aşınım şekillerinin oluşması\nIII. Yeraltı su seviyesinin düşmesiyle çökme obruklarının artması\n\nYukarıdakilerden hangileri <b>insanların yeraltı sularını aşırı kullanması</b> sonucu ortaya çıkan çevre sorunlarındandır?",
+          text: "I. Doğal göllerin su seviyesinin çekilmesi ve kuruması\nII. Peribacası aşınım şekillerinin oluşması\nIII. Yeraltı su seviyesinin düşmesiyle çökme obruklarının artması\n\nYukarıdakilerden hangileri <b>insanların yeraltı sularını aşırı ve bilinçsizce kullanması</b> sonucu ortaya çıkan çevre sorunlarındandır?",
           options: ["Yalnız I", "Yalnız II", "I ve III", "II ve III", "I, II ve III"],
           correct: 2,
-          explanation: "Göllerin kuruması (I) ve obrukların hızla artması (III) aşırı yeraltı suyu kullanımının sonucudur. Peribacaları (II) ise doğal rüzgâr/sel aşındırmasıdır."
+          explanation: "Göllerin kuruması (I) ve obrukların hızla artması (III) aşırı yeraltı suyu kullanımının sonucudur. Peribacaları (II) ise tamamen doğal süreçlerle oluşur."
         };
       }
 
@@ -240,14 +254,14 @@
           "Çukurova ve Gediz gibi birinci sınıf verimli ovaların sanayi ve yerleşime açılması",
           "Mera alanlarının bilinçsizce sürülüp tarıma açılması",
           "Eğimli yamaçlardaki orman örtüsünün tahrip edilip çay bahçesine dönüştürülmesi",
-          "Delta ovalarının kıyı şeridine dev tatil köyleri inşa edilmesi",
+          "Delta ovalarının kıyı şeridine tatil köyleri inşa edilmesi",
           "Jeotermal sıcak su kaynaklarının modern seracılıkta ve konut ısıtmasında değerlendirilmesi"
         ];
         return {
           id: id,
           category: "Arazi Kullanımı",
           type: "text",
-          text: "Aşağıdakilerden hangisi Türkiye'de <b>yanlış arazi kullanımına</b> örnek <u>gösterilemez</u>?",
+          text: "Aşağıdakilerden hangisi Türkiye'de <b>yanlış arazi kullanımına</b> örnek <u>gösterilemez</u> (Doğru ve sürdürülebilir bir kullanımdır)?",
           options: options,
           correct: 4,
           explanation: "Jeotermal enerjinin seralarda ve konutlarda kullanılması sürdürülebilir, doğru bir kaynak yönetimidir."
@@ -259,7 +273,7 @@
           id: id,
           category: "Dağ Oluşumları (Orojenez)",
           type: "text",
-          text: "I. Amanos (Nur) Dağları\nII. Erciyes Dağı\nIII. Kaçkar Dağları\n\nYukarıdaki dağlardan hangileri <b>Orojenez (levha sıkışması/kırılma-kıvrılma)</b> sonucu meydana gelmiştir?",
+          text: "I. Amanos (Nur) Dağları\nII. Erciyes Dağı\nIII. Kaçkar Dağları\n\nYukarıdaki dağlardan hangileri <b>Orojenez (levha sıkışması sonucu kırılma veya kıvrılma)</b> ile meydana gelmiştir?",
           options: ["I ve II", "I ve III", "II ve III", "Yalnız I", "I, II ve III"],
           correct: 1,
           explanation: "Amanos horst (kırık), Kaçkar ise kıvrım dağıdır; her ikisi de orojenezle oluşmuştur. Erciyes ise volkaniktir."
@@ -351,29 +365,29 @@
       };
     }
 
-    // --- STATE & LOCALSTORAGE ---
-    let questionBank = JSON.parse(localStorage.getItem('kpss_qbank_v7') || '[]');
-    let currentIdx = parseInt(localStorage.getItem('kpss_cur_v7') || '0', 10);
-    let favorites = JSON.parse(localStorage.getItem('kpss_favs_v7') || '[]');
-    let wrongs = JSON.parse(localStorage.getItem('kpss_wrongs_v7') || '[]');
-    let corrects = JSON.parse(localStorage.getItem('kpss_corrects_v7') || '[]');
-    let solvedCount = parseInt(localStorage.getItem('kpss_solved_v7') || '0', 10);
+    // --- STATE YÖNETİMİ ---
+    let questionBank = JSON.parse(localStorage.getItem('kpss_qbank_v8') || '[]');
+    let currentIdx = parseInt(localStorage.getItem('kpss_cur_v8') || '0', 10);
+    let favorites = JSON.parse(localStorage.getItem('kpss_favs_v8') || '[]');
+    let wrongs = JSON.parse(localStorage.getItem('kpss_wrongs_v8') || '[]');
+    let corrects = JSON.parse(localStorage.getItem('kpss_corrects_v8') || '[]');
+    let solvedCount = parseInt(localStorage.getItem('kpss_solved_v8') || '0', 10);
 
-    // İlk 50 soruyu benzersiz mod sıralamasıyla oluştur
+    // Havuz yoksa baştan 50 benzersiz soru üret
     if (questionBank.length === 0) {
       for (let i = 1; i <= 50; i++) {
         questionBank.push(generateQuestion(i, i - 1));
       }
-      localStorage.setItem('kpss_qbank_v7', JSON.stringify(questionBank));
+      localStorage.setItem('kpss_qbank_v8', JSON.stringify(questionBank));
     }
 
     function saveState() {
-      localStorage.setItem('kpss_favs_v7', JSON.stringify(favorites));
-      localStorage.setItem('kpss_wrongs_v7', JSON.stringify(wrongs));
-      localStorage.setItem('kpss_corrects_v7', JSON.stringify(corrects));
-      localStorage.setItem('kpss_cur_v7', currentIdx.toString());
-      localStorage.setItem('kpss_qbank_v7', JSON.stringify(questionBank));
-      localStorage.setItem('kpss_solved_v7', solvedCount.toString());
+      localStorage.setItem('kpss_favs_v8', JSON.stringify(favorites));
+      localStorage.setItem('kpss_wrongs_v8', JSON.stringify(wrongs));
+      localStorage.setItem('kpss_corrects_v8', JSON.stringify(corrects));
+      localStorage.setItem('kpss_cur_v8', currentIdx.toString());
+      localStorage.setItem('kpss_qbank_v8', JSON.stringify(questionBank));
+      localStorage.setItem('kpss_solved_v8', solvedCount.toString());
       updateCounters();
     }
 
@@ -418,10 +432,12 @@
         
         q.mapData.points.forEach(pt => {
           const circleG = document.createElementNS("http://www.w3.org/2000/svg", "g");
+          // Sadece numara varsa text yaz, yoksa temiz kırmızı nokta bas
+          const labelSvg = pt.label ? `<text x="${pt.x}" y="${pt.y - 14}" fill="#ffffff" font-size="14" font-weight="bold" text-anchor="middle" class="select-none filter drop-shadow">${pt.label}</text>` : '';
           circleG.innerHTML = `
-            <circle cx="${pt.x}" cy="${pt.y}" r="18" fill="${q.mapData.color}" opacity="0.35" class="map-pulse" />
-            <circle cx="${pt.x}" cy="${pt.y}" r="9" fill="${q.mapData.color}" stroke="#ffffff" stroke-width="2.5" />
-            <text x="${pt.x}" y="${pt.y - 14}" fill="#ffffff" font-size="13" font-weight="bold" text-anchor="middle" class="select-none filter drop-shadow">${pt.label}</text>
+            <circle cx="${pt.x}" cy="${pt.y}" r="16" fill="${q.mapData.color}" opacity="0.35" class="map-pulse" />
+            <circle cx="${pt.x}" cy="${pt.y}" r="8" fill="${q.mapData.color}" stroke="#ffffff" stroke-width="2" />
+            ${labelSvg}
           `;
           svgFeatures.appendChild(circleG);
         });
